@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { supabase } from '../../api/supabase';
+import { useAuthStore } from '../../store/authStore';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { 
   Users, Search, UserX, UserCheck, Trash2, RefreshCw, 
-  Plus, UserPlus, X, Check, Mail, Lock, User 
+  Plus, UserPlus, X, Link2, Copy 
 } from 'lucide-react';
 
 type User = {
@@ -14,10 +16,15 @@ type User = {
   role: string;
   status: string;
   balance: number;
+  invite_code: string;
+  invited_by: string;
+  invite_count: number;
   created_at: string;
 };
 
 export function UserList() {
+  const location = useLocation();
+  const { user: currentUser } = useAuthStore();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -27,32 +34,100 @@ export function UserList() {
     password: '',
     username: '',
     role: 'user',
+    invite_code: '',
   });
   const [creating, setCreating] = useState(false);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [myInviteCode, setMyInviteCode] = useState('');
+  const [showInvite, setShowInvite] = useState(false);
 
-  useEffect(() => { fetchUsers(); }, []);
+  const userRole = currentUser?.role || 'user';
+  const isAdmin = userRole === 'owner' || userRole === 'gm';
+  const isAgent = userRole === 'agent';
 
-  const fetchUsers = async () => {
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const searchParam = params.get('search');
+    if (searchParam) setSearch(searchParam);
+    fetchUsers(searchParam || '');
+    fetchMyInviteCode();
+  }, [location.search]);
+
+  const fetchMyInviteCode = async () => {
+    if (!currentUser?.id) return;
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('invite_code')
+        .eq('id', currentUser.id)
+        .single();
+      if (data) setMyInviteCode(data.invite_code);
+    } catch (error) {
+      console.error('Fetch invite code error:', error);
+    }
+  };
+
+  const fetchUsers = async (searchQuery?: string) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('user_list')
-        .select('*')
+      let query = supabase
+        .from('profiles')
+        .select('id, username, email, role, status, invite_code, invited_by, invite_count, created_at')
         .order('created_at', { ascending: false });
+
+      // 权限控制
+      if (!isAdmin && !isAgent) {
+        query = query.eq('id', currentUser?.id);
+      } else if (isAgent) {
+        query = query.or(`id.eq.${currentUser?.id},invited_by.eq.${currentUser?.id}`);
+      }
+
+      if (searchQuery) {
+        query = query.or(`username.ilike.%${searchQuery}%,email.ilike.%${searchQuery}%`);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
-      setUsers(data || []);
+      
+      // 获取积分
+      const usersWithBalance = await Promise.all((data || []).map(async (u: any) => {
+        const { data: balanceData } = await supabase
+          .from('points_accounts')
+          .select('balance')
+          .eq('user_id', u.id)
+          .single();
+        return { ...u, balance: balanceData?.balance || 0 };
+      }));
+      
+      setUsers(usersWithBalance);
     } catch (error) {
       console.error('Fetch users error:', error);
-      setUsers([
-        { id: '1', username: 'admin', email: 'admin@caisheng.com', role: 'owner', status: 'active', balance: 1000, created_at: new Date().toISOString() },
-        { id: '2', username: 'test', email: 'test@test.com', role: 'user', status: 'active', balance: 100, created_at: new Date().toISOString() },
-      ]);
     } finally {
       setLoading(false);
     }
   };
 
-  // 创建用户
+  const handleSearch = () => {
+    if (search.trim()) {
+      window.history.pushState({}, '', `/users?search=${encodeURIComponent(search.trim())}`);
+      fetchUsers(search.trim());
+    } else {
+      window.history.pushState({}, '', '/users');
+      fetchUsers('');
+    }
+  };
+
+  const copyInviteCode = () => {
+    if (myInviteCode) {
+      navigator.clipboard.writeText(myInviteCode);
+      alert('✅ 邀请码已复制！');
+    }
+  };
+
+  const getInviteLink = () => {
+    return `${window.location.origin}/register?invite=${myInviteCode}`;
+  };
+
   const handleCreateUser = async () => {
     if (!createForm.email || !createForm.password) {
       alert('请填写邮箱和密码');
@@ -65,45 +140,45 @@ export function UserList() {
 
     setCreating(true);
     try {
-      // 1. 在 Supabase Auth 创建用户
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: createForm.email,
-        password: createForm.password,
-        email_confirm: true,
-        user_metadata: { username: createForm.username || createForm.email.split('@')[0] },
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+
+      if (!accessToken) {
+        alert('请先登录');
+        setCreating(false);
+        return;
+      }
+
+      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+      
+      const response = await fetch(`${supabaseUrl}/functions/v1/create-user`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${accessToken}`,
+        },
+        body: JSON.stringify({
+          email: createForm.email,
+          password: createForm.password,
+          username: createForm.username || createForm.email.split('@')[0],
+          role: createForm.role,
+          invite_code: createForm.invite_code || myInviteCode,
+        }),
       });
 
-      if (authError) throw authError;
+      const data = await response.json();
 
-      if (authData.user) {
-        // 2. 在 profiles 表创建记录
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id,
-            username: createForm.username || createForm.email.split('@')[0],
-            email: createForm.email,
-            role: createForm.role,
-            status: 'active',
-            is_root_holder: false,
-          });
+      if (!response.ok) {
+        throw new Error(data.error || '创建失败');
+      }
 
-        if (profileError) throw profileError;
-
-        // 3. 创建钱包
-        await supabase
-          .from('points_accounts')
-          .insert({
-            user_id: authData.user.id,
-            balance: 0,
-            total_recharged: 0,
-            total_consumed: 0,
-          });
-
+      if (data.success) {
         alert(`✅ 用户 ${createForm.email} 创建成功！`);
         setShowCreateForm(false);
-        setCreateForm({ email: '', password: '', username: '', role: 'user' });
-        fetchUsers();
+        setCreateForm({ email: '', password: '', username: '', role: 'user', invite_code: '' });
+        fetchUsers(search);
+      } else {
+        throw new Error(data.error || '创建失败');
       }
     } catch (error: any) {
       alert('创建失败：' + error.message);
@@ -112,38 +187,34 @@ export function UserList() {
     }
   };
 
-  // 冻结/激活用户
   const toggleUserStatus = async (id: string, currentStatus: string) => {
     const newStatus = currentStatus === 'active' ? 'frozen' : 'active';
     if (!confirm(`确定${newStatus === 'active' ? '激活' : '冻结'}此用户吗？`)) return;
+    setActionLoading(id);
     try {
       await supabase.from('profiles').update({ status: newStatus }).eq('id', id);
       alert(`✅ 用户已${newStatus === 'active' ? '激活' : '冻结'}`);
-      fetchUsers();
+      fetchUsers(search);
     } catch (error) {
       alert('操作失败');
+    } finally {
+      setActionLoading(null);
     }
   };
 
-  // 删除用户
-  const deleteUser = async (id: string) => {
-    if (!confirm('⚠️ 确定要删除此用户吗？此操作不可恢复！')) return;
+  const deleteUser = async (id: string, email: string) => {
+    if (!confirm(`⚠️ 确定要永久删除用户 ${email} 吗？此操作不可恢复！`)) return;
+    setActionLoading(id);
     try {
-      // 先删除 profiles（级联删除 points_accounts 和 ledger）
       await supabase.from('profiles').delete().eq('id', id);
-      // 再删除 auth 用户
-      await supabase.auth.admin.deleteUser(id);
-      alert('✅ 用户已删除');
-      fetchUsers();
+      alert(`✅ 用户 ${email} 已删除`);
+      fetchUsers(search);
     } catch (error) {
-      alert('删除失败：' + error);
+      alert('删除失败：' + error.message);
+    } finally {
+      setActionLoading(null);
     }
   };
-
-  const filtered = users.filter(u => 
-    u.username?.toLowerCase().includes(search.toLowerCase()) ||
-    u.email?.toLowerCase().includes(search.toLowerCase())
-  );
 
   return (
     <div className="p-4 space-y-4">
@@ -153,19 +224,52 @@ export function UserList() {
             <Users className="text-primary-500" size={28} />
             用户中心
           </h1>
-          <p className="text-gray-400 text-sm">管理所有平台用户 · 创建/冻结/删除</p>
+          <p className="text-gray-400 text-sm">
+            {isAdmin ? '管理所有平台用户' : isAgent ? '管理您邀请的用户' : '查看我的信息'}
+          </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="secondary" size="sm" onClick={fetchUsers}>
+          {(isAdmin || isAgent) && (
+            <Button size="sm" onClick={() => setShowInvite(!showInvite)}>
+              <Link2 size={16} /> 邀请码
+            </Button>
+          )}
+          <Button variant="secondary" size="sm" onClick={() => fetchUsers(search)}>
             <RefreshCw size={16} />
           </Button>
-          <Button size="sm" onClick={() => setShowCreateForm(!showCreateForm)}>
-            <UserPlus size={16} /> 创建用户
-          </Button>
+          {(isAdmin || isAgent) && (
+            <Button size="sm" onClick={() => setShowCreateForm(!showCreateForm)}>
+              <UserPlus size={16} /> 创建用户
+            </Button>
+          )}
         </div>
       </div>
 
-      {/* 创建用户表单 */}
+      {showInvite && myInviteCode && (
+        <Card className="bg-[#141b2d] border-amber-500/30 p-4">
+          <div className="flex items-center gap-4">
+            <div>
+              <p className="text-gray-400 text-sm">我的邀请码</p>
+              <div className="flex items-center gap-2 mt-1">
+                <code className="text-amber-400 font-bold text-xl bg-[#0a0e1a] px-4 py-2 rounded-lg">
+                  {myInviteCode}
+                </code>
+                <button onClick={copyInviteCode} className="p-2 rounded hover:bg-blue-500/10 text-gray-400 hover:text-blue-400">
+                  <Copy size={18} />
+                </button>
+                <button onClick={() => {
+                  navigator.clipboard.writeText(getInviteLink());
+                  alert('✅ 邀请链接已复制！');
+                }} className="p-2 rounded hover:bg-blue-500/10 text-gray-400 hover:text-blue-400">
+                  🔗 复制链接
+                </button>
+              </div>
+              <p className="text-gray-500 text-xs mt-1">邀请链接: {getInviteLink()}</p>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {showCreateForm && (
         <Card className="bg-[#141b2d] border-[#1e2a45] p-4">
           <div className="flex items-center justify-between mb-3">
@@ -219,6 +323,18 @@ export function UserList() {
                 <option value="gm">GM</option>
               </select>
             </div>
+            {!isAdmin && (
+              <div className="col-span-2">
+                <label className="text-gray-400 text-sm">邀请码（可选）</label>
+                <input
+                  value={createForm.invite_code}
+                  onChange={(e) => setCreateForm({ ...createForm, invite_code: e.target.value })}
+                  className="w-full bg-[#0a0e1a] border border-[#1e2a45] rounded-lg px-3 py-2 text-white text-sm mt-1"
+                  placeholder="输入邀请码"
+                />
+                <p className="text-xs text-gray-500 mt-1">邀请码: {myInviteCode}</p>
+              </div>
+            )}
           </div>
           <Button className="mt-3" onClick={handleCreateUser} loading={creating}>
             <UserPlus size={16} /> 创建用户
@@ -226,25 +342,36 @@ export function UserList() {
         </Card>
       )}
 
-      {/* 搜索 */}
       <Card className="bg-[#141b2d] border-[#1e2a45] p-3">
         <div className="flex items-center gap-3">
-          <Search className="text-gray-500" size={16} />
+          <Search className="text-gray-400" size={16} />
           <input
+            type="text"
             placeholder="搜索用户..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="flex-1 bg-transparent border-none text-white text-sm focus:outline-none"
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            className="flex-1 bg-transparent border-none text-white text-sm focus:outline-none placeholder-gray-500"
           />
+          <Button size="sm" variant="secondary" onClick={handleSearch}>搜索</Button>
+          {search && (
+            <button 
+              onClick={() => { setSearch(''); window.history.pushState({}, '', '/users'); fetchUsers(''); }}
+              className="text-gray-400 hover:text-white text-sm"
+            >
+              清除
+            </button>
+          )}
           <span className="text-xs text-gray-400">{users.length} 个用户</span>
         </div>
       </Card>
 
-      {/* 用户列表 */}
       {loading ? (
         <div className="text-center py-8 text-gray-400">加载中...</div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-8 text-gray-400">暂无用户</div>
+      ) : users.length === 0 ? (
+        <div className="text-center py-8 text-gray-400">
+          {search ? `没有找到 "${search}" 相关的用户` : '暂无用户'}
+        </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -254,17 +381,18 @@ export function UserList() {
                 <th className="text-left py-3 px-3 text-gray-400 font-medium">角色</th>
                 <th className="text-left py-3 px-3 text-gray-400 font-medium">积分</th>
                 <th className="text-left py-3 px-3 text-gray-400 font-medium">状态</th>
-                <th className="text-left py-3 px-3 text-gray-400 font-medium">注册时间</th>
+                <th className="text-left py-3 px-3 text-gray-400 font-medium">邀请人</th>
                 <th className="text-right py-3 px-3 text-gray-400 font-medium">操作</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((user) => (
+              {users.map((user) => (
                 <tr key={user.id} className="border-b border-[#1e2a45]/50 hover:bg-[#1a2340] transition">
                   <td className="py-3 px-3">
                     <div>
                       <p className="text-white font-medium text-sm">{user.username || '未设置'}</p>
                       <p className="text-gray-400 text-xs">{user.email}</p>
+                      {user.invite_code && <span className="text-xs text-amber-500">邀请码: {user.invite_code}</span>}
                     </div>
                   </td>
                   <td className="py-3 px-3">
@@ -283,39 +411,54 @@ export function UserList() {
                       {user.status === 'active' ? '✅ 正常' : '❄️ 冻结'}
                     </span>
                   </td>
-                  <td className="py-3 px-3 text-gray-400 text-xs">{new Date(user.created_at).toLocaleDateString()}</td>
+                  <td className="py-3 px-3 text-gray-400 text-xs">
+                    {user.invited_by ? '已邀请' : '-'}
+                  </td>
                   <td className="py-3 px-3 text-right">
                     <div className="flex justify-end gap-1">
-                      {user.role !== 'owner' && (
+                      {(isAdmin || user.id === currentUser?.id) && (
                         <>
-                          {user.status === 'active' ? (
-                            <button 
-                              onClick={() => toggleUserStatus(user.id, user.status)} 
-                              className="p-1.5 rounded hover:bg-yellow-500/10 text-yellow-500 hover:text-yellow-400 transition" 
-                              title="冻结"
-                            >
-                              <UserX size={15} />
-                            </button>
-                          ) : (
-                            <button 
-                              onClick={() => toggleUserStatus(user.id, user.status)} 
-                              className="p-1.5 rounded hover:bg-green-500/10 text-green-500 hover:text-green-400 transition" 
-                              title="激活"
-                            >
-                              <UserCheck size={15} />
-                            </button>
+                          {user.role !== 'owner' && user.id !== currentUser?.id && (
+                            <>
+                              {user.status === 'active' ? (
+                                <button 
+                                  onClick={() => toggleUserStatus(user.id, user.status)} 
+                                  disabled={actionLoading === user.id}
+                                  className="p-1.5 rounded hover:bg-yellow-500/10 text-yellow-500 hover:text-yellow-400 transition disabled:opacity-50" 
+                                  title="冻结"
+                                >
+                                  <UserX size={15} />
+                                </button>
+                              ) : (
+                                <button 
+                                  onClick={() => toggleUserStatus(user.id, user.status)} 
+                                  disabled={actionLoading === user.id}
+                                  className="p-1.5 rounded hover:bg-green-500/10 text-green-500 hover:text-green-400 transition disabled:opacity-50" 
+                                  title="激活"
+                                >
+                                  <UserCheck size={15} />
+                                </button>
+                              )}
+                              <button 
+                                onClick={() => deleteUser(user.id, user.email)} 
+                                disabled={actionLoading === user.id}
+                                className="p-1.5 rounded hover:bg-red-500/10 text-red-500 hover:text-red-400 transition disabled:opacity-50" 
+                                title="删除"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </>
                           )}
-                          <button 
-                            onClick={() => deleteUser(user.id)} 
-                            className="p-1.5 rounded hover:bg-red-500/10 text-red-500 hover:text-red-400 transition" 
-                            title="删除"
-                          >
-                            <Trash2 size={15} />
-                          </button>
+                          {user.id === currentUser?.id && (
+                            <span className="text-xs text-gray-400">👤 自己</span>
+                          )}
+                          {user.role === 'owner' && (
+                            <span className="text-xs text-amber-500">👑 所有者</span>
+                          )}
                         </>
                       )}
-                      {user.role === 'owner' && (
-                        <span className="text-xs text-amber-500">👑 所有者</span>
+                      {!isAdmin && user.id !== currentUser?.id && (
+                        <span className="text-xs text-gray-400">仅查看</span>
                       )}
                     </div>
                   </td>

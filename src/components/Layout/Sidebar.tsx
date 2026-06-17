@@ -4,7 +4,7 @@ import {
   Server, Gift, BarChart3, Trash2, LogOut, History, UserCog, 
   Key, TrendingUp, DollarSign, Settings, MessageCircle, 
   Ticket, Megaphone, MapPin, Crown, ClipboardList, ShoppingCart,
-  BarChart, User, Database, FileCode, Power
+  BarChart, User, Power, Percent
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { supabase } from '../../api/supabase';
@@ -12,6 +12,7 @@ import { supabase } from '../../api/supabase';
 const menuGroups = [
   { label: '超级管理', items: [
     { path: '/super', icon: Crown, label: '超级管理台', roles: ['owner'] },
+    { path: '/admin/fees', icon: Percent, label: '手续费管理', roles: ['owner'] },
   ]},
   { label: '核心', items: [
     { path: '/', icon: LayoutDashboard, label: '控制台', roles: ['owner', 'gm'] },
@@ -41,36 +42,40 @@ const menuGroups = [
     { path: '/admin/providers', icon: Server, label: '接口中心', roles: ['owner'] },
     { path: '/admin/provider-stats', icon: BarChart, label: '接口统计', roles: ['owner'] },
     { path: '/admin/packages', icon: Gift, label: '套餐中心', roles: ['owner'] },
-    { path: '/admin/feature-stats', icon: BarChart3, label: '功能统计', roles: ['owner'] },
-    { path: '/admin/maintenance', icon: Power, label: '系统维护', roles: ['owner'] },
+    { path: '/admin/recycle', icon: Trash2, label: '软删除中心', roles: ['owner', 'gm'] },
     { path: '/logs', icon: ClipboardList, label: '系统日志', roles: ['owner', 'gm'] },
   ]},
   { label: '系统', items: [
     { path: '/admin/orders', icon: BarChart3, label: '订单中心', roles: ['owner', 'gm'] },
-    { path: '/admin/recycle', icon: Trash2, label: '软删除中心', roles: ['owner', 'gm'] },
   ]}
 ];
 
 export function Sidebar() {
   const { user } = useAuthStore();
+  const userRole = user?.role || 'user';
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     window.location.href = '/login';
   };
-  const userRole = user?.role || 'user';
 
   return (
-    <aside className="w-64 min-h-screen bg-tech-gradient border-r border-primary-700/20 flex flex-col fixed left-0 top-0 bottom-0 z-50 relative overflow-hidden">
+    <aside className="w-64 min-h-screen bg-tech-gradient border-r border-primary-700/20 flex flex-col fixed left-0 top-0 bottom-0 z-50 overflow-y-auto">
       <div className="absolute right-0 bottom-20 text-9xl opacity-5 pointer-events-none">🐉</div>
       <div className="absolute left-0 top-20 text-8xl opacity-5 pointer-events-none">🐲</div>
-      <div className="relative z-10">
-        <div className="p-5 border-b border-primary-700/20">
+
+      <div className="relative z-10 flex flex-col h-full">
+        <div className="p-5 border-b border-primary-700/20 flex-shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-bold text-sm relative">
-              CS<span className="absolute -top-1 -right-1 text-[8px]">🐉</span>
+              CS
+              <span className="absolute -top-1 -right-1 text-[8px]">🐉</span>
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white leading-tight">财盛集团</h1>
+              <h1 className="text-lg font-bold text-white leading-tight flex items-center gap-1">
+                财盛集团
+                <span className="text-primary-400/30 text-xs">🐲</span>
+              </h1>
               <p className="text-[10px] text-primary-400/70 tracking-wider">博亿研发中心 · 商业版</p>
             </div>
           </div>
@@ -79,9 +84,9 @@ export function Sidebar() {
           </div>
         </div>
 
-        <div className="px-4 py-3 border-b border-primary-700/20">
-          <div className="flex items-center gap-3 bg-primary-900/20 rounded-lg p-2 border border-primary-700/10 relative">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-bold text-sm">
+        <div className="px-4 py-3 border-b border-primary-700/20 flex-shrink-0">
+          <div className="flex items-center gap-3 bg-primary-900/20 rounded-lg p-2 border border-primary-700/10">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-primary-700 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
               {user?.email?.[0]?.toUpperCase() || 'U'}
             </div>
             <div className="flex-1 min-w-0">
@@ -90,13 +95,13 @@ export function Sidebar() {
                 <span>🐉</span> {userRole} · 已认证
               </p>
             </div>
-            <button onClick={handleLogout} className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-400 hover:text-red-400">
+            <button onClick={handleLogout} className="p-1.5 rounded-lg hover:bg-red-500/10 text-gray-400 hover:text-red-400 transition-colors flex-shrink-0">
               <LogOut size={14} />
             </button>
           </div>
         </div>
 
-        <nav className="flex-1 overflow-y-auto p-3 space-y-2">
+        <nav className="flex-1 overflow-y-auto p-3 space-y-3">
           {menuGroups.map((group, idx) => {
             const visibleItems = group.items.filter(item => {
               if (!item.roles) return true;
@@ -106,31 +111,36 @@ export function Sidebar() {
 
             return (
               <div key={idx}>
-                <p className="text-[10px] text-primary-400/40 uppercase tracking-wider px-3 mb-1 font-medium flex items-center gap-1">
-                  <span className="text-[8px]">🐉</span>{group.label}<span className="text-[8px]">🐲</span>
+                <p className="text-[10px] text-primary-400/40 uppercase tracking-wider px-3 mb-1.5 font-medium">
+                  {group.label}
                 </p>
                 <div className="space-y-0.5">
-                  {visibleItems.map((item) => (
-                    <NavLink
-                      key={item.path}
-                      to={item.path}
-                      className={({ isActive }) =>
-                        `flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm transition-all duration-200 ${
-                          isActive ? 'bg-primary-600/20 text-primary-400 border border-primary-500/20' : 'text-gray-400 hover:text-white hover:bg-primary-900/20'
-                        }`
-                      }
-                    >
-                      <item.icon size={15} className="flex-shrink-0" />
-                      <span>{item.label}</span>
-                    </NavLink>
-                  ))}
+                  {visibleItems.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <NavLink
+                        key={item.path}
+                        to={item.path}
+                        className={({ isActive }) =>
+                          `flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm transition-all duration-200 ${
+                            isActive 
+                              ? 'bg-primary-600/20 text-primary-400 border border-primary-500/20' 
+                              : 'text-gray-400 hover:text-white hover:bg-primary-900/20'
+                          }`
+                        }
+                      >
+                        <Icon size={15} className="flex-shrink-0" />
+                        <span>{item.label}</span>
+                      </NavLink>
+                    );
+                  })}
                 </div>
               </div>
             );
           })}
         </nav>
 
-        <div className="p-3 border-t border-primary-700/20 text-center">
+        <div className="p-3 border-t border-primary-700/20 text-center flex-shrink-0">
           <p className="text-[9px] text-primary-500/30 font-mono">© 2026 CS 财盛集团 · 博亿研发中心</p>
         </div>
       </div>

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../api/supabase';
 import { Card } from '../../components/UI/Card';
-import { BarChart3, TrendingUp, TrendingDown, Activity, Clock, Server, RefreshCw } from 'lucide-react';
+import { Button } from '../../components/UI/Button';
+import { BarChart3, TrendingUp, TrendingDown, Activity, Server, RefreshCw } from 'lucide-react';
 
 type ProviderStat = {
   id: number;
@@ -32,7 +33,6 @@ export function ProviderStats() {
       setStats([
         { id: 1, name: 'WhatsApp API', platform: 'whatsapp', total_requests: 15230, failed_requests: 234, success_rate: 98.5, avg_response_time: 320, total_cost: 152.3, status: 'active' },
         { id: 2, name: 'Telegram API', platform: 'telegram', total_requests: 8760, failed_requests: 180, success_rate: 97.9, avg_response_time: 450, total_cost: 131.4, status: 'active' },
-        { id: 3, name: 'Signal API', platform: 'signal', total_requests: 2340, failed_requests: 520, success_rate: 77.8, avg_response_time: 680, total_cost: 46.8, status: 'inactive' },
       ]);
     } finally {
       setLoading(false);

@@ -1,9 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from './components/Layout';
 import { Login } from './pages/Auth/Login';
+import { Register } from './pages/Auth/Register';
 import { Dashboard } from './pages/Dashboard/Dashboard';
 import { GMDashboard } from './pages/GM/GMDashboard';
 import { SuperDashboard } from './pages/SuperAdmin/SuperDashboard';
+import { FeeManager } from './pages/Admin/Fees/FeeManager';
 import { TaskList } from './pages/Tasks/TaskList';
 import { Wallet } from './pages/Wallet/Wallet';
 import { Ledger } from './pages/Wallet/Ledger';
@@ -12,8 +14,6 @@ import { DetectPage } from './pages/Detect/DetectPage';
 import { PurchasePackage } from './pages/User/PurchasePackage';
 import { Profile } from './pages/Profile/Profile';
 import { DetectionHistory } from './pages/History/DetectionHistory';
-import { FeatureStats } from './pages/Admin/Stats/FeatureStats';
-import { SystemMaintenance } from './pages/Admin/System/SystemMaintenance';
 import { Permissions } from './pages/Admin/Permissions';
 import { RootDelegation } from './pages/Admin/RootDelegation';
 import { PointsAdjust } from './pages/Admin/PointsAdjust';
@@ -46,10 +46,12 @@ function App() {
       {user && <AnnouncementPopup />}
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
         <Route element={<Layout />}>
           <Route path="/" element={<PrivateRoute><Dashboard /></PrivateRoute>} />
           <Route path="/gm" element={<PrivateRoute><GMDashboard /></PrivateRoute>} />
           <Route path="/super" element={<PrivateRoute><SuperDashboard /></PrivateRoute>} />
+          <Route path="/admin/fees" element={<PrivateRoute><FeeManager /></PrivateRoute>} />
           <Route path="/tasks" element={<PrivateRoute><TaskList /></PrivateRoute>} />
           <Route path="/detect/:platform" element={<PrivateRoute><DetectPage /></PrivateRoute>} />
           <Route path="/wallet" element={<PrivateRoute><Wallet /></PrivateRoute>} />
@@ -70,8 +72,6 @@ function App() {
           <Route path="/admin/address" element={<PrivateRoute><AddressPool /></PrivateRoute>} />
           <Route path="/admin/orders" element={<PrivateRoute><Orders /></PrivateRoute>} />
           <Route path="/admin/recycle" element={<PrivateRoute><Recycle /></PrivateRoute>} />
-          <Route path="/admin/feature-stats" element={<PrivateRoute><FeatureStats /></PrivateRoute>} />
-          <Route path="/admin/maintenance" element={<PrivateRoute><SystemMaintenance /></PrivateRoute>} />
           <Route path="/announcements" element={<PrivateRoute><Announcements /></PrivateRoute>} />
           <Route path="/tickets" element={<PrivateRoute><Tickets /></PrivateRoute>} />
           <Route path="/messages" element={<PrivateRoute><Messages /></PrivateRoute>} />
