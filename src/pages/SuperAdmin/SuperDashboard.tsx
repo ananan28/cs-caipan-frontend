@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../api/supabase';
-import { useAuthStore } from '../../store/authStore';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
 import { 
   Shield, Users, Wallet, TrendingUp, TrendingDown, 
   RefreshCw, Send, Search, UserX, UserCheck,
   Crown, Edit, Save, X, Eye, EyeOff,
-  DollarSign, Percent, Gift, Settings, Activity,
-  BarChart3, Clock, AlertCircle, Zap
+  DollarSign, Percent, Gift, Settings
 } from 'lucide-react';
 
 type FeeSettings = {
@@ -38,7 +36,6 @@ type User = {
 };
 
 export function SuperDashboard() {
-  const { user } = useAuthStore();
   const [users, setUsers] = useState<User[]>([]);
   const [feeSettings, setFeeSettings] = useState<FeeSettings>({
     id: 1,
@@ -56,7 +53,7 @@ export function SuperDashboard() {
   });
   const [platformWallet, setPlatformWallet] = useState({ balance: 0 });
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'fees' | 'config' | 'transfer'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'fees' | 'config'>('overview');
   const [searchUser, setSearchUser] = useState('');
   const [searchResult, setSearchResult] = useState<User[]>([]);
   const [editingFee, setEditingFee] = useState(false);
@@ -159,7 +156,6 @@ export function SuperDashboard() {
         </Button>
       </div>
 
-      {/* 统计 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
         <Card className="bg-[#141b2d] border-[#1e2a45] p-2">
           <p className="text-xs text-gray-400">总用户</p>
@@ -179,7 +175,6 @@ export function SuperDashboard() {
         </Card>
       </div>
 
-      {/* 标签栏 */}
       <div className="flex gap-2 border-b border-[#1e2a45] pb-2 flex-wrap">
         {[
           { key: 'overview', label: '📊 总览' },
@@ -197,7 +192,6 @@ export function SuperDashboard() {
         ))}
       </div>
 
-      {/* ====== 手续费配置 ====== */}
       {activeTab === 'fees' && (
         <div className="grid grid-cols-1 gap-4">
           <Card className="bg-[#141b2d] border-[#1e2a45] p-4">
@@ -217,40 +211,18 @@ export function SuperDashboard() {
             {editingFee && feeForm ? (
               <div className="space-y-3">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                  <div>
-                    <label className="text-gray-400 text-xs">转账费率 %</label>
-                    <input type="number" step="0.01" value={feeForm.transfer_rate} onChange={(e) => setFeeForm({ ...feeForm, transfer_rate: parseFloat(e.target.value) || 0 })} className="w-full bg-[#0a0e1a] border border-[#1e2a45] rounded px-2 py-1 text-white text-sm" />
-                  </div>
-                  <div>
-                    <label className="text-gray-400 text-xs">回收费率 %</label>
-                    <input type="number" step="0.01" value={feeForm.recycle_rate} onChange={(e) => setFeeForm({ ...feeForm, recycle_rate: parseFloat(e.target.value) || 0 })} className="w-full bg-[#0a0e1a] border border-[#1e2a45] rounded px-2 py-1 text-white text-sm" />
-                  </div>
-                  <div>
-                    <label className="text-gray-400 text-xs">最低手续费</label>
-                    <input type="number" step="0.01" value={feeForm.min_fee} onChange={(e) => setFeeForm({ ...feeForm, min_fee: parseFloat(e.target.value) || 0 })} className="w-full bg-[#0a0e1a] border border-[#1e2a45] rounded px-2 py-1 text-white text-sm" />
-                  </div>
-                  <div>
-                    <label className="text-gray-400 text-xs">最高手续费</label>
-                    <input type="number" step="0.01" value={feeForm.max_fee} onChange={(e) => setFeeForm({ ...feeForm, max_fee: parseFloat(e.target.value) || 0 })} className="w-full bg-[#0a0e1a] border border-[#1e2a45] rounded px-2 py-1 text-white text-sm" />
-                  </div>
+                  <div><label className="text-gray-400 text-xs">转账费率 %</label><input type="number" step="0.01" value={feeForm.transfer_rate} onChange={(e) => setFeeForm({ ...feeForm, transfer_rate: parseFloat(e.target.value) || 0 })} className="w-full bg-[#0a0e1a] border border-[#1e2a45] rounded px-2 py-1 text-white text-sm" /></div>
+                  <div><label className="text-gray-400 text-xs">回收费率 %</label><input type="number" step="0.01" value={feeForm.recycle_rate} onChange={(e) => setFeeForm({ ...feeForm, recycle_rate: parseFloat(e.target.value) || 0 })} className="w-full bg-[#0a0e1a] border border-[#1e2a45] rounded px-2 py-1 text-white text-sm" /></div>
+                  <div><label className="text-gray-400 text-xs">最低手续费</label><input type="number" step="0.01" value={feeForm.min_fee} onChange={(e) => setFeeForm({ ...feeForm, min_fee: parseFloat(e.target.value) || 0 })} className="w-full bg-[#0a0e1a] border border-[#1e2a45] rounded px-2 py-1 text-white text-sm" /></div>
+                  <div><label className="text-gray-400 text-xs">最高手续费</label><input type="number" step="0.01" value={feeForm.max_fee} onChange={(e) => setFeeForm({ ...feeForm, max_fee: parseFloat(e.target.value) || 0 })} className="w-full bg-[#0a0e1a] border border-[#1e2a45] rounded px-2 py-1 text-white text-sm" /></div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-gray-400 text-xs">承担方</label>
-                    <select value={feeForm.payer} onChange={(e) => setFeeForm({ ...feeForm, payer: e.target.value as any })} className="w-full bg-[#0a0e1a] border border-[#1e2a45] rounded px-2 py-1 text-white text-sm">
-                      <option value="sender">发送方承担</option>
-                      <option value="receiver">接收方承担</option>
-                      <option value="shared">双方分摊</option>
-                      <option value="platform">平台承担</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label className="text-gray-400 text-xs">开关</label>
-                    <select value={String(feeForm.enabled)} onChange={(e) => setFeeForm({ ...feeForm, enabled: e.target.value === 'true' })} className="w-full bg-[#0a0e1a] border border-[#1e2a45] rounded px-2 py-1 text-white text-sm">
-                      <option value="true">启用</option>
-                      <option value="false">关闭</option>
-                    </select>
-                  </div>
+                  <div><label className="text-gray-400 text-xs">承担方</label><select value={feeForm.payer} onChange={(e) => setFeeForm({ ...feeForm, payer: e.target.value as any })} className="w-full bg-[#0a0e1a] border border-[#1e2a45] rounded px-2 py-1 text-white text-sm">
+                    <option value="sender">发送方承担</option><option value="receiver">接收方承担</option><option value="shared">双方分摊</option><option value="platform">平台承担</option>
+                  </select></div>
+                  <div><label className="text-gray-400 text-xs">开关</label><select value={String(feeForm.enabled)} onChange={(e) => setFeeForm({ ...feeForm, enabled: e.target.value === 'true' })} className="w-full bg-[#0a0e1a] border border-[#1e2a45] rounded px-2 py-1 text-white text-sm">
+                    <option value="true">启用</option><option value="false">关闭</option>
+                  </select></div>
                 </div>
                 <div className="flex gap-2 mt-2">
                   <Button size="sm" onClick={saveFeeSettings}><Save size={14} /> 保存</Button>
@@ -275,7 +247,6 @@ export function SuperDashboard() {
         </div>
       )}
 
-      {/* ====== 系统配置 ====== */}
       {activeTab === 'config' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="bg-[#141b2d] border-[#1e2a45]">
@@ -292,26 +263,13 @@ export function SuperDashboard() {
           <Card className="bg-[#141b2d] border-[#1e2a45]">
             <h3 className="text-white font-semibold mb-3">💸 转账限制</h3>
             <div className="space-y-2">
-              <div>
-                <label className="text-gray-400 text-xs">最小转账</label>
-                <div className="flex gap-2 mt-1">
-                  <input type="number" value={configs.min_transfer_amount} onChange={(e) => setConfigs({ ...configs, min_transfer_amount: parseFloat(e.target.value) || 0 })} className="flex-1 bg-[#0a0e1a] border border-[#1e2a45] rounded-lg px-2 py-1 text-white text-xs" />
-                  <Button size="sm" onClick={() => updateConfig('min_transfer_amount', configs.min_transfer_amount)}>保存</Button>
-                </div>
-              </div>
-              <div>
-                <label className="text-gray-400 text-xs">最大转账</label>
-                <div className="flex gap-2 mt-1">
-                  <input type="number" value={configs.max_transfer_amount} onChange={(e) => setConfigs({ ...configs, max_transfer_amount: parseFloat(e.target.value) || 0 })} className="flex-1 bg-[#0a0e1a] border border-[#1e2a45] rounded-lg px-2 py-1 text-white text-xs" />
-                  <Button size="sm" onClick={() => updateConfig('max_transfer_amount', configs.max_transfer_amount)}>保存</Button>
-                </div>
-              </div>
+              <div><label className="text-gray-400 text-xs">最小转账</label><div className="flex gap-2 mt-1"><input type="number" value={configs.min_transfer_amount} onChange={(e) => setConfigs({ ...configs, min_transfer_amount: parseFloat(e.target.value) || 0 })} className="flex-1 bg-[#0a0e1a] border border-[#1e2a45] rounded-lg px-2 py-1 text-white text-xs" /><Button size="sm" onClick={() => updateConfig('min_transfer_amount', configs.min_transfer_amount)}>保存</Button></div></div>
+              <div><label className="text-gray-400 text-xs">最大转账</label><div className="flex gap-2 mt-1"><input type="number" value={configs.max_transfer_amount} onChange={(e) => setConfigs({ ...configs, max_transfer_amount: parseFloat(e.target.value) || 0 })} className="flex-1 bg-[#0a0e1a] border border-[#1e2a45] rounded-lg px-2 py-1 text-white text-xs" /><Button size="sm" onClick={() => updateConfig('max_transfer_amount', configs.max_transfer_amount)}>保存</Button></div></div>
             </div>
           </Card>
         </div>
       )}
 
-      {/* ====== 用户管理 ====== */}
       {activeTab === 'users' && (
         <Card className="bg-[#141b2d] border-[#1e2a45] p-0 overflow-hidden">
           <div className="p-3 border-b border-[#1e2a45] flex items-center gap-3">
@@ -359,7 +317,6 @@ export function SuperDashboard() {
         </Card>
       )}
 
-      {/* ====== 总览 ====== */}
       {activeTab === 'overview' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card className="bg-[#141b2d] border-[#1e2a45]">

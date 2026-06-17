@@ -3,7 +3,7 @@ import {
   LayoutDashboard, Users, Wallet, Grid3x3, Shield, Activity, 
   Server, Gift, BarChart3, Trash2, LogOut, History, UserCog, 
   Key, TrendingUp, DollarSign, Settings, MessageCircle, 
-  Ticket, Megaphone, MapPin, Crown, ClipboardList, ShoppingCart,
+  Ticket, Megaphone, MapPin, Crown, ClipboardList,
   BarChart, User, Power, Percent
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
@@ -23,7 +23,6 @@ const menuGroups = [
   ]},
   { label: '业务', items: [
     { path: '/tasks', icon: Grid3x3, label: '功能中心', roles: ['owner', 'gm', 'agent', 'user'] },
-    { path: '/purchase', icon: ShoppingCart, label: '购买套餐', roles: ['owner', 'gm', 'agent', 'user'] },
     { path: '/history', icon: History, label: '检测历史', roles: ['owner', 'gm', 'agent', 'user'] },
   ]},
   { label: '消息', items: [

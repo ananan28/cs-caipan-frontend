@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../api/supabase';
 import { Card } from '../../components/UI/Card';
 import { Button } from '../../components/UI/Button';
-import { Ticket, Plus, CheckCircle, Clock, AlertCircle, Trash2, Edit, X, UserCheck, UserX } from 'lucide-react';
+import { Ticket, Plus, CheckCircle, Trash2, Edit, X } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 
 type TicketItem = {
@@ -26,8 +26,8 @@ export function Tickets() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({ title: '', content: '', category: '充值', priority: 'medium' as any });
-  const [processingId, setProcessingId] = useState<string | null>(null);
   const userRole = user?.role || 'user';
+  const isGM = userRole === 'owner' || userRole === 'gm';
 
   useEffect(() => { fetchTickets(); }, []);
 
@@ -75,28 +75,22 @@ export function Tickets() {
     setShowForm(true);
   };
 
-  // ====== GM处理工单 ======
   const handleResolve = async (id: string) => {
     if (!confirm('确认将此工单标记为已解决？')) return;
-    setProcessingId(id);
     try {
       await supabase.from('tickets').update({ status: 'resolved' }).eq('id', id);
       alert('✅ 工单已解决');
       fetchTickets();
     } catch (error: any) {
       alert('操作失败：' + error.message);
-    } finally {
-      setProcessingId(null);
     }
   };
 
   const handleRejectTicket = async (id: string) => {
     const reason = prompt('请输入拒绝/关闭原因：');
     if (reason === null) return;
-    setProcessingId(id);
     try {
       await supabase.from('tickets').update({ status: 'closed' }).eq('id', id);
-      // 发送通知
       const { data: ticket } = await supabase.from('tickets').select('user_id').eq('id', id).single();
       if (ticket) {
         await supabase.from('messages').insert({
@@ -111,8 +105,6 @@ export function Tickets() {
       fetchTickets();
     } catch (error: any) {
       alert('操作失败：' + error.message);
-    } finally {
-      setProcessingId(null);
     }
   };
 
@@ -134,8 +126,6 @@ export function Tickets() {
     closed: 'bg-gray-500/20 text-gray-400',
   };
   const statusLabels = { open: '待处理', in_progress: '处理中', resolved: '已解决', closed: '已关闭' };
-
-  const isGM = userRole === 'owner' || userRole === 'gm';
 
   return (
     <div className="p-4 space-y-4">

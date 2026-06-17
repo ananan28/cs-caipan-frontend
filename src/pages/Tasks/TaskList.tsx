@@ -66,17 +66,12 @@ export function TaskList() {
     const feature = features.find(f => f.id === id);
     if (!feature) return;
     if (confirm(`⚠️ 确定要删除「${feature.name}」吗？`)) {
-      setFeatures(features.map(f => {
-        if (f.id === id) {
-          return { ...f, isDeleted: true, isActive: false };
-        }
-        return f;
-      }));
+      setFeatures(features.map(f => f.id === id ? { ...f, isActive: false } : f));
       alert(`🗑️「${feature.name}」已移至回收站`);
     }
   };
 
-  const visibleFeatures = features.filter(f => !f.isDeleted);
+  const visibleFeatures = features;
 
   return (
     <div className="p-4">
@@ -136,25 +131,13 @@ export function TaskList() {
                   <div className="flex items-start justify-between">
                     <div className="text-3xl">{item.icon}</div>
                     <div className="flex items-center gap-0.5" onClick={(e) => e.stopPropagation()}>
-                      <button
-                        onClick={() => toggleActive(item.id)}
-                        className={`p-1 rounded hover:bg-blue-500/10 transition ${isActive ? 'text-green-500' : 'text-gray-500'}`}
-                        title={isActive ? '下架' : '上架'}
-                      >
+                      <button onClick={() => toggleActive(item.id)} className={`p-1 rounded hover:bg-blue-500/10 transition ${isActive ? 'text-green-500' : 'text-gray-500'}`} title={isActive ? '下架' : '上架'}>
                         {isActive ? <Eye size={14} /> : <EyeOff size={14} />}
                       </button>
-                      <button
-                        onClick={() => startEdit(item.id)}
-                        className="p-1 rounded hover:bg-blue-500/10 text-gray-500 hover:text-blue-400 transition"
-                        title="编辑"
-                      >
+                      <button onClick={() => startEdit(item.id)} className="p-1 rounded hover:bg-blue-500/10 text-gray-500 hover:text-blue-400 transition" title="编辑">
                         <Edit size={14} />
                       </button>
-                      <button
-                        onClick={() => deleteFeature(item.id)}
-                        className="p-1 rounded hover:bg-red-500/10 text-gray-500 hover:text-red-400 transition"
-                        title="删除"
-                      >
+                      <button onClick={() => deleteFeature(item.id)} className="p-1 rounded hover:bg-red-500/10 text-gray-500 hover:text-red-400 transition" title="删除">
                         <Trash2 size={14} />
                       </button>
                     </div>

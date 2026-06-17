@@ -11,7 +11,6 @@ import { Wallet } from './pages/Wallet/Wallet';
 import { Ledger } from './pages/Wallet/Ledger';
 import { UserList } from './pages/Users/UserList';
 import { DetectPage } from './pages/Detect/DetectPage';
-import { PurchasePackage } from './pages/User/PurchasePackage';
 import { Profile } from './pages/Profile/Profile';
 import { DetectionHistory } from './pages/History/DetectionHistory';
 import { Permissions } from './pages/Admin/Permissions';
@@ -59,7 +58,6 @@ function App() {
           <Route path="/users" element={<PrivateRoute><UserList /></PrivateRoute>} />
           <Route path="/profile" element={<PrivateRoute><Profile /></PrivateRoute>} />
           <Route path="/history" element={<PrivateRoute><DetectionHistory /></PrivateRoute>} />
-          <Route path="/purchase" element={<PrivateRoute><PurchasePackage /></PrivateRoute>} />
           <Route path="/admin/permissions" element={<PrivateRoute><Permissions /></PrivateRoute>} />
           <Route path="/admin/delegation" element={<PrivateRoute><RootDelegation /></PrivateRoute>} />
           <Route path="/admin/points" element={<PrivateRoute><PointsAdjust /></PrivateRoute>} />
